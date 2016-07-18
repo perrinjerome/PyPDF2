@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from StringIO import StringIO
 
 from PyPDF2 import PdfFileReader, PdfFileWriter
 
@@ -67,3 +68,64 @@ class AddJsTestCase(unittest.TestCase):
         self.assertIn('/JavaScript', self.pdf_file_writer._root_object['/Names'])
         self.assertIn('/Names', self.pdf_file_writer._root_object['/Names']['/JavaScript'])
         return self.pdf_file_writer._root_object['/Names']['/JavaScript']['/Names'][0]
+
+
+class MergeTestCase(unittest.TestCase):
+    def xsetUp(self):
+        self.pdf_file_1_reader = PdfFileReader(
+            os.path.join(RESOURCE_ROOT, 'Embedded_Image_1.pdf'))
+        self.pdf_file_2_reader = PdfFileReader(
+            os.path.join(RESOURCE_ROOT, 'Embedded_Image_2.pdf'))
+        self.pdf_file_writer = PdfFileWriter()
+    def setUp(self):
+        self.pdf_file_1_reader = PdfFileReader(
+            os.path.join(RESOURCE_ROOT, 'Template-Visa-Sticker-001-fr.pdf'))
+        self.pdf_file_2_reader = PdfFileReader(
+            os.path.join(RESOURCE_ROOT, 'Template-Identity-Sticker-001-fr.pdf'))
+        self.pdf_file_writer = PdfFileWriter()
+    
+    def test_merge_different_image_with_same_name_should_duplicate_resources(self):
+        # XXX images
+        self.pdf_file_writer.addPage(self.pdf_file_1_reader.getPage(0))
+        self.pdf_file_writer.addPage(self.pdf_file_2_reader.getPage(0))
+        
+        outputStream = StringIO()
+        self.pdf_file_writer.write(outputStream)
+        open('out.pdf', 'w').write(outputStream.getvalue())
+        #import ipdb; ipdb.set_trace()
+
+    def test_merge_same_image_should_not_duplicate_resources(self):
+        # XXX images
+        self.pdf_file_writer.addPage(self.pdf_file_1_reader.getPage(0))
+        
+        def getOutputFileSize():
+            outputStream = StringIO()
+            self.pdf_file_writer.write(outputStream)
+            return len(outputStream.getvalue())
+        file1_len = getOutputFileSize()
+        
+        self.pdf_file_writer.addPage(self.pdf_file_2_reader.getPage(0))
+        file1_and_file2_len = getOutputFileSize()
+        print "1", file1_len
+        print "1+2", file1_and_file2_len
+        print "2", file1_and_file2_len - file1_len
+        
+        self.pdf_file_writer.addPage(self.pdf_file_2_reader.getPage(0))
+        mmm = getOutputFileSize()
+        print "1+2+2", mmm
+        print "2'", mmm - file1_and_file2_len
+        before = mmm
+        
+        self.pdf_file_writer.addPage(self.pdf_file_1_reader.getPage(0))
+        mmm = getOutputFileSize()
+        print "1+2+2+1", mmm
+        print "1'", mmm - before
+
+        self.pdf_file_writer.addPage(self.pdf_file_1_reader.getPage(0))
+        mmm = getOutputFileSize()
+        print "1+2+2+1+2", mmm
+        print "2'", mmm - before
+        
+        
+        #open('out.pdf', 'w').write(outputStream.getvalue())
+        #import ipdb; ipdb.set_trace()
